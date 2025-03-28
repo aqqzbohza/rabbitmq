@@ -1,0 +1,52 @@
+services:
+  redis:
+    container_name: "cache"
+    image: redis:6.2.1-alpine
+    environment:
+      - REDIS_REPLICATION_MODE=master
+    expose:
+      - "6379"
+    ports:
+      - "6379:6379"
+  rabbitmq:
+    image: 'rabbitmq:3.6-management-alpine'
+    ports:
+      # The standard AMQP protocol port
+      - '5672:5672'
+      # HTTP management UI
+      - '15672:15672'
+    environment:
+      # The location of the RabbitMQ server.  "amqp" is the protocol;
+      # "rabbitmq" is the hostname.  Note that there is not a guarantee
+      # that the server will start first!  Telling the pika client library
+      # to try multiple times gets around this ordering issue.
+      AMQP_URL: 'amqp://rabbitmq?connection_attempts=5&retry_delay=5'
+      RABBITMQ_DEFAULT_USER: "guest"
+      RABBITMQ_DEFAULT_PASS: "guest"
+    networks:
+      - network
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    ports:
+      - "6831:6831/udp"
+      - "16686:16686"
+      - "4317:4317"
+    networks:
+      - jaeger-example
+  hotrod:
+    image: jaegertracing/example-hotrod:latest
+    ports: 
+      - "8080:8080"
+    command: ["all"]
+    environment:
+      - JAEGER_AGENT_HOST=jaeger
+      - JAEGER_AGENT_PORT=6831
+    networks:
+      - jaeger-example
+    depends_on:
+      - jaeger
+networks:
+  # Declare our private network.  We must declare one for the magic
+  # Docker DNS to work, but otherwise its default settings are fine.
+  network: {}
+  jaeger-example:
